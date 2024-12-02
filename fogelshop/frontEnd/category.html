@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Online Shop">
+    <title>Shop Homepage</title>
+    <!-- Favicon-->
+    <link rel="icon" type="image/x-icon" href="assets/favicon.ico">
+    <!-- Bootstrap icons-->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.5.0/font/bootstrap-icons.css" rel="stylesheet">
+    <!-- Core theme CSS -->
+    <link href="css/styles.css" rel="stylesheet">
+    <style>
+        #cartItemsContainer img {
+            width: 50px;
+            height: 50px;
+            object-fit: cover;
+            margin-right: 10px;
+        }
+
+        .dropdown-menu {
+            max-height: 400px;
+            overflow-y: auto;
+            width: 300px;
+        }
+
+        .dropdown-footer {
+            font-size: 1rem;
+            color: #000;
+        }
+
+        #cart-total {
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: #000;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-light bg-light">
+        <div class="container px-4 px-lg-5">
+            <a class="navbar-brand" href="#">Online Shop</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarSupportedContent">
+                <ul class="navbar-nav me-auto mb-2 mb-lg-0 ms-lg-4">
+                    <li class="nav-item"><a class="nav-link active" href="#">Home</a></li>
+                    <li class="nav-item"><a class="nav-link" href="#">About</a></li>
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" id="categoryDropdown" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">Categories</a>
+                        <ul class="dropdown-menu" id="categoryList" aria-labelledby="categoryDropdown"></ul>
+                    </li>
+                </ul>
+                <!-- User Info -->
+                <div class="user-info">
+                    <span id="user-actions"></span>
+                </div>
+                <!-- Cart Dropdown -->
+                <div class="dropdown ms-3">
+                    <button class="btn btn-outline-dark dropdown-toggle" type="button" id="cartDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="bi-cart-fill me-1"></i>
+                        Cart <span id="cart-item-count" class="badge bg-dark text-white ms-1 rounded-pill">0</span>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end p-3" aria-labelledby="cartDropdown">
+                        <li class="dropdown-header">Cart Summary</li>
+                        <li class="dropdown-item text-end">
+                            <strong>Total: $<span id="cart-total">0.00</span></strong>
+                        </li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li class="dropdown-footer text-center">
+                            <button class="btn btn-sm btn-primary" onclick="goToCartPage()">View Cart</button>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </nav>
+    <!-- Header -->
+    <header class="bg-dark py-5">
+        <div class="container px-4 px-lg-5 my-5">
+            <div class="text-center text-white">
+                <h1 class="display-4 fw-bolder">Shop in Style</h1>
+                <p class="lead fw-normal text-white-50 mb-0">With our curated selection of products</p>
+            </div>
+        </div>
+    </header>
+
+    <!-- Products Section -->
+    <section class="py-5">
+        <div class="container px-4 px-lg-5 mt-5">
+            <div id="products-container" class="row gx-4 gx-lg-5 row-cols-2 row-cols-md-3 row-cols-xl-4 justify-content-center">
+                <!-- Products will be dynamically populated here -->
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="py-5 bg-dark">
+        <div class="container">
+            <p class="m-0 text-center text-white">Copyright &copy; Your Website 2023</p>
+        </div>
+    </footer>
+
+    <!-- Bootstrap core JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"></script>
+
+    <!-- Custom Script -->
+    <script>
+        async function addToCart(button) {
+    const productId = button.getAttribute("data-id");
+    const token = localStorage.getItem("access_token");
+    if (!token) {
+        alert("You need to log in to add items to the cart.");
+        return;
+    }
+
+    try {
+        const response = await fetch("http://127.0.0.1:8000/api/cart/add/", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${token}`,
+            },
+            body: JSON.stringify({ product_id: productId, quantity: 1 }),
+        });
+
+        if (response.ok) {
+            const result = await response.json();
+            alert("Product added to cart!");
+            await fetchCartSummary(); // Refresh the cart summary
+        } else {
+            const errorData = await response.json();
+            alert(`Failed to add product to cart: ${errorData.detail || "Unknown error."}`);
+        }
+    } catch (error) {
+        console.error("Error adding product to cart:", error);
+        alert("An error occurred while adding the product to the cart.");
+    }
+}
+
+async function fetchCartSummary() {
+    const cartItemCount = document.getElementById("cart-item-count");
+    const cartTotal = document.getElementById("cart-total");
+
+    const token = localStorage.getItem("access_token");
+    if (!token) {
+        cartItemCount.textContent = "0";
+        cartTotal.textContent = "0.00";
+        return;
+    }
+
+    try {
+        const response = await fetch("http://127.0.0.1:8000/api/cart/", {
+            method: "GET",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${token}`,
+            },
+        });
+
+        if (response.ok) {
+            const cart = await response.json();
+            let totalAmount = 0;
+
+            cart.items.forEach((item) => {
+                totalAmount += item.quantity * item.product.price;
+            });
+
+            cartItemCount.textContent = cart.items.length;
+            cartTotal.textContent = totalAmount.toFixed(2);
+        } else {
+            console.error("Failed to fetch cart summary.");
+            cartItemCount.textContent = "0";
+            cartTotal.textContent = "0.00";
+        }
+    } catch (error) {
+        console.error("Error fetching cart summary:", error);
+        cartItemCount.textContent = "0";
+        cartTotal.textContent = "0.00";
+    }
+}
+
+async function fetchProducts() {
+    const productsContainer = document.getElementById("products-container");
+    const urlParams = new URLSearchParams(window.location.search);
+    const amazonid = urlParams.get("id");
+    console.log(amazonid)
+    try {
+        const response = await fetch(`http://127.0.0.1:8000/api/single-product/`+amazonid, {
+            method: "GET",
+            headers: { "Content-Type": "application/json" },
+        });
+
+        if (response.ok) {
+            const products = await response.json();
+            productsContainer.innerHTML = "";
+
+            products.forEach((product) => {
+                const productCard = `
+                    <div class="col mb-5">
+                        <div class="card h-100">
+                            <img class="card-img-top" src="${product.image_url}" alt="${product.name}" />
+                            <div class="card-body p-4">
+                                <div class="text-center">
+                                    <h5>
+                                        <a href="product.html?id=${encodeURIComponent(product.description)}&product=${encodeURIComponent(product.id)}" class="text-decoration-none text-dark">
+                                            ${product.name}
+                                        </a>
+                                    </h5>
+                                    <p>$${product.price}</p>
+                                </div>
+                            </div>
+                            <div class="card-footer p-4 pt-0 border-top-0 bg-transparent">
+                                <div class="text-center">
+                                    <button class="btn btn-outline-dark mt-auto" onclick="addToCart(this)" data-id="${product.id}">
+                                        Add to Cart
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                productsContainer.innerHTML += productCard;
+            });
+        } else {
+            console.error("Failed to fetch products");
+        }
+    } catch (error) {
+        console.error("Error fetching products:", error);
+    }
+}
+
+async function fetchUserInfo() {
+    const userActions = document.getElementById("user-actions");
+    const token = localStorage.getItem("access_token");
+
+    if (!token) {
+        userActions.innerHTML = `
+            <a href="login.html" class="btn btn-outline-dark">Login</a>
+        `;
+        return;
+    }
+
+    try {
+        const response = await fetch("http://127.0.0.1:8000/api/user-info/", {
+            method: "GET",
+            headers: { "Authorization": `Bearer ${token}` },
+        });
+
+        if (response.ok) {
+            const data = await response.json();
+            userActions.innerHTML = `
+                <span>Welcome, <strong>${data.username}</strong></span>
+                <button class="btn btn-outline-dark ms-2" onclick="logout()">Logout</button>
+            `;
+        } else {
+            userActions.innerHTML = `<a href="login.html" class="btn btn-outline-dark">Login</a>`;
+        }
+    } catch (error) {
+        console.error("Error fetching user info:", error);
+        userActions.innerHTML = `<a href="login.html" class="btn btn-outline-dark">Login</a>`;
+    }
+}
+
+function logout() {
+    localStorage.removeItem("access_token");
+    window.location.reload();
+}
+
+async function fetchCategories() {
+    const categoryList = document.getElementById("categoryList");
+
+    try {
+        const response = await fetch("http://127.0.0.1:8000/api/categories/", {
+            method: "GET",
+            headers: { "Content-Type": "application/json" },
+        });
+
+        if (response.ok) {
+            const categories = await response.json();
+            categoryList.innerHTML = ""; // Clear existing categories
+
+            categories.forEach((category) => {
+                const categoryItem = `
+                    <li><a class="dropdown-item" href="category.html?id=${category.id}">${category.name}</a></li>
+                `;
+                categoryList.innerHTML += categoryItem;
+            });
+        } else {
+            console.error("Failed to fetch categories.");
+        }
+    } catch (error) {
+        console.error("Error fetching categories:", error);
+    }
+}
+function goToCartPage(){
+    window.location.href="cart.html"
+}
+document.addEventListener("DOMContentLoaded", async () => {
+    await fetchUserInfo();
+    await fetchCartSummary();
+    await fetchProducts();
+    await fetchCategories();
+});
+
+    </script>
+</body>
+</html>

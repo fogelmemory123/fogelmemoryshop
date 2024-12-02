@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scrape Products</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f8f9fa;
+            margin: 0 auto;
+            max-width: 600px;
+            padding: 20px;
+        }
+        h2 {
+            text-align: center;
+            color: #343a40;
+        }
+        form {
+            background: #ffffff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            font-weight: bold;
+            margin-bottom: 5px;
+            color: #495057;
+        }
+        input, select, button {
+            width: 100%;
+            padding: 10px;
+            font-size: 16px;
+            margin-top: 5px;
+            box-sizing: border-box;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+        }
+        input:focus, select:focus {
+            border-color: #007bff;
+            outline: none;
+            box-shadow: 0 0 5px rgba(0, 123, 255, 0.25);
+        }
+        button {
+            background-color: #007bff;
+            color: #ffffff;
+            border: none;
+            cursor: pointer;
+            margin-top: 10px;
+            font-weight: bold;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .message {
+            text-align: center;
+            margin-top: 20px;
+            font-weight: bold;
+        }
+        .message.success {
+            color: #28a745;
+        }
+        .message.error {
+            color: #dc3545;
+        }
+    </style>
+</head>
+<body>
+    <h2>Scrape Products</h2>
+    <form id="scrapeForm">
+        <div class="form-group">
+            <label for="scrapeUrl">Target URL:</label>
+            <input type="url" id="scrapeUrl" name="scrapeUrl" placeholder="Enter the target URL" required>
+        </div>
+        <div class="form-group">
+            <label for="scrapeCategory">Category:</label>
+            <select id="scrapeCategory" name="scrapeCategory" required>
+                <option value="" disabled selected>Select a category</option>
+            </select>
+        </div>
+        <button type="submit">Scrape and Save</button>
+    </form>
+    <p id="scrapeMessage" class="message"></p>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", async () => {
+            const scrapeForm = document.getElementById("scrapeForm");
+            const scrapeMessage = document.getElementById("scrapeMessage");
+            const scrapeCategory = document.getElementById("scrapeCategory");
+
+            // Fetch and populate categories
+            const loadCategories = async () => {
+                try {
+                    const response = await fetch("http://127.0.0.1:8000/api/categories/");
+                    if (response.ok) {
+                        const categories = await response.json();
+                        categories.forEach(category => {
+                            const option = document.createElement("option");
+                            option.value = category.id;
+                            option.textContent = category.name;
+                            scrapeCategory.appendChild(option);
+                        });
+                    } else {
+                        scrapeMessage.textContent = "Failed to load categories.";
+                        scrapeMessage.className = "message error";
+                    }
+                } catch (error) {
+                    scrapeMessage.textContent = "An error occurred while loading categories.";
+                    scrapeMessage.className = "message error";
+                    console.error("Error loading categories:", error);
+                }
+            };
+
+            // Handle form submission
+            scrapeForm.addEventListener("submit", async (e) => {
+                e.preventDefault();
+                scrapeMessage.textContent = "Scraping in progress...";
+                scrapeMessage.className = "message";
+
+                const scrapeData = {
+                    url: document.getElementById("scrapeUrl").value,
+                    category: parseInt(scrapeCategory.value),
+                };
+
+                try {
+                    const response = await fetch("http://127.0.0.1:8000/api/scrape-products/", {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json",
+                        },
+                        body: JSON.stringify(scrapeData),
+                    });
+
+                    if (response.ok) {
+                        scrapeMessage.textContent = "Products scraped and saved successfully!";
+                        scrapeMessage.className = "message success";
+                        scrapeForm.reset();
+                    } else {
+                        const errorData = await response.json();
+                        scrapeMessage.textContent = `Error: ${errorData.detail || "Failed to scrape products."}`;
+                        scrapeMessage.className = "message error";
+                    }
+                } catch (error) {
+                    scrapeMessage.textContent = "An error occurred. Please try again.";
+                    scrapeMessage.className = "message error";
+                    console.error("Error scraping products:", error);
+                }
+            });
+
+            // Load categories on page load
+            await loadCategories();
+        });
+    </script>
+</body>
+</html>

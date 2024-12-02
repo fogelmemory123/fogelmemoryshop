@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Product Details</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f8f9fa;
+        }
+        .product-details {
+            margin-top: 40px;
+        }
+        .product-card {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+        }
+        .product-card h1 {
+            font-size: 2rem;
+            margin-bottom: 20px;
+        }
+        .product-card img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+        }
+        .product-description {
+            margin-top: 20px;
+            font-size: 1.1rem;
+            color: #495057;
+        }
+        .additional-info {
+            margin-top: 30px;
+            padding: 15px;
+            background-color: #e9ecef;
+            border-radius: 8px;
+        }
+        .price {
+            font-size: 1.5rem;
+            color: #28a745;
+            font-weight: bold;
+        }
+        .stock-info {
+            color: #6c757d;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container my-5">
+        <div class="product-card">
+            <h1>Product Details</h1>
+            <div id="product-details" class="product-details text-center">
+                <p class="text-muted">Loading product details...</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", async () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const ebayId = urlParams.get("id");
+            const ebayProduct = urlParams.get("product");
+
+            if (!ebayId) {
+                document.getElementById("product-details").innerHTML = "<p class='text-danger'>No Product ID provided.</p>";
+                return;
+            }
+
+            try {
+                const response = await fetch("http://127.0.0.1:8000/api/fetch-amazon-item?id=+"+encodeURIComponent(ebayId)+"&product="+encodeURIComponent(ebayProduct));
+
+                if (response.ok) {
+                    const data = await response.json();
+                    const product = data.product; // נתוני המוצר מהסרבר
+                    
+                    const productDetails = document.getElementById("product-details");
+                    productDetails.innerHTML = `
+                        <div class="row">
+                            <div class="col-md-6">
+                                <img src="${product.image_url || product.image || 'https://via.placeholder.com/600'}" 
+                                     alt="${product.name}" class="mb-4" />
+                            </div>
+                            <div class="col-md-6 text-start">
+                                <h2 class="mb-4">${product.name}</h2>
+                                <p class="price mb-3">$${product.price}</p>
+                                <p class="stock-info">In Stock: ${product.stock} units</p>
+                                <div class="product-description">
+                                    <h3>Product Description</h3>
+                                    <p>${data.description || product.description || "No description available."}</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="additional-info mt-4">
+                            <h3>Additional Information</h3>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    
+                                    <p><strong>Created:</strong> ${new Date(product.created_at).toLocaleDateString()}</p>
+                                </div>
+                                <div class="col-md-6">
+                                    <p><strong>Last Updated:</strong> ${new Date(product.updated_at).toLocaleDateString()}</p>
+                                    <p><strong>Product ID:</strong> ${product.id}</p>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    const errorData = await response.json();
+                    document.getElementById("product-details").innerHTML = `<p class="text-danger">Error: ${errorData.error}</p>`;
+                }
+            } catch (error) {
+                console.error("Error fetching product details:", error);
+                document.getElementById("product-details").innerHTML = "<p class='text-danger'>An error occurred while fetching product details.</p>";
+            }
+        });
+    </script>
+</body>
+</html>

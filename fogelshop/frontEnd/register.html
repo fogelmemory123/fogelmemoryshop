@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: auto;
+            padding: 20px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+        }
+        input {
+            width: 100%;
+            padding: 8px;
+            box-sizing: border-box;
+        }
+        button {
+            padding: 10px 15px;
+            background-color: #28a745;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        button:disabled {
+            background-color: #ccc;
+        }
+        #message {
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h2>Register</h2>
+    <form id="registerForm">
+        <div class="form-group">
+            <label for="username">Username</label>
+            <input type="text" id="username" name="username" required>
+        </div>
+        <div class="form-group">
+            <label for="email">Email</label>
+            <input type="email" id="email" name="email" required>
+        </div>
+        <div class="form-group">
+            <label for="password">Password</label>
+            <input type="password" id="password" name="password" required>
+        </div>
+        <div class="form-group">
+            <label for="confirmPassword">Confirm Password</label>
+            <input type="password" id="confirmPassword" name="confirmPassword" required>
+        </div>
+        <button type="submit">Register</button>
+    </form>
+    <p id="message"></p>
+
+    <script>
+        document.getElementById("registerForm").addEventListener("submit", async function (e) {
+            e.preventDefault(); // Prevent default form submission
+
+            // Collect form data
+            const username = document.getElementById("username").value;
+            const email = document.getElementById("email").value;
+            const password = document.getElementById("password").value;
+            const confirmPassword = document.getElementById("confirmPassword").value;
+
+            const messageElement = document.getElementById("message");
+
+            // Validate password confirmation
+            if (password !== confirmPassword) {
+                messageElement.textContent = "Passwords do not match.";
+                messageElement.style.color = "red";
+                return;
+            }
+
+            // API request to register user
+            try {
+                const response = await fetch("http://127.0.0.1:8000/api/register/", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({
+                        username: username,
+                        email: email,
+                        password: password,
+                    }),
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    // Save the token (if provided) to localStorage
+                    if (data.token) {
+                        localStorage.setItem("token", data.token);
+                        messageElement.textContent = "Registration successful! Token saved.";
+                        messageElement.style.color = "green";
+                    } else if (data.access && data.refresh) {
+                        localStorage.setItem("access_token", data.access);
+                        localStorage.setItem("refresh_token", data.refresh);
+                        messageElement.textContent = "Registration successful! Tokens saved.";
+                        messageElement.style.color = "green";
+                    }
+                } else {
+                    messageElement.textContent = data.detail || "Error during registration.";
+                    messageElement.style.color = "red";
+                }
+            } catch (error) {
+                messageElement.textContent = "Something went wrong. Please try again.";
+                messageElement.style.color = "red";
+            }
+        });
+    </script>
+</body>
+</html>
